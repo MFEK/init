@@ -1,5 +1,35 @@
 use std::error;
 use std::fmt;
+use std::io::Write;
+
+pub enum InitResult {
+    GlifOk(String, Box<dyn Write>),
+    GlifStdoutOk(Box<dyn Write>),
+    UfoOk(std::path::PathBuf),
+    InitErr(InitError),
+}
+
+impl std::fmt::Debug for InitResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            GlifOk(s, _) => write!(f, "GlifOk({})", &s),
+            GlifStdoutOk(..) => write!(f, "GlifStdoutOk(STDOUT)"),
+            UfoOk(pb) => write!(f, "UfoOk({:?})", &pb),
+            InitErr(e) => write!(f, "InitError({:?})", e),
+        }
+    }
+}
+
+use InitResult::*;
+
+impl From<InitResult> for Result<(), InitError> {
+    fn from(ir: InitResult) -> Self {
+        match ir {
+            GlifOk(..) | GlifStdoutOk(..) | UfoOk(..) => Ok(()),
+            InitErr(e) => Err(e),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum InitError {

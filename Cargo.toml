@@ -1,6 +1,6 @@
 [package]
 name = "MFEKinit"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Fredrick Brennan <copypaste@kittens.ph>"]
 edition = "2018"
 
@@ -9,6 +9,9 @@ edition = "2018"
 [dependencies]
 clap = "2.33"
 xmltree = "0.10"
+# Logging
+log = "0.4"
+env_logger = "0.9"
 
 [profile.release]
 opt-level = 'z'
