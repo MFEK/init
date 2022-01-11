@@ -4,6 +4,8 @@
 
 This program is part of the [MFEK project](https://github.com/MFEK/).
 
+MFEKinit makes _new_ UFO files and .glif's, and is intended to make 'Untitled' fonts for use by MFEK's tools. MFEKmetadata is intended for changing font properties.
+
 ## License
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,4 +24,4 @@ limitations under the License.
 
 The biggest TODO's right now:
 
-* improving the UFO output, right now it just makes a directory…
+* improving the UFO output

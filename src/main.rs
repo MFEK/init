@@ -22,17 +22,18 @@ use error::InitError;
 use error::InitResult::{self, *};
 
 static AUTHOR: &str = "Fredrick R. Brennan <copypaste@kittens.ph>";
-static VERSION: &str = "0.2.0";
+static VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn clap_app() -> App<'static, 'static> {
     App::new("MFEKinit")
         .setting(AppSettings::ArgRequiredElseHelp)
+        .setting(AppSettings::DeriveDisplayOrder)
         .version(VERSION)
         .author(AUTHOR)
         .subcommand(
             SubCommand::with_name("glif")
                 .alias("GLIF")
-                .about("Initialize a .glif file")
+                .about("Initialize an empty .glif file")
                 .version(VERSION)
                 .author(AUTHOR)
                 .arg(
@@ -72,7 +73,7 @@ fn clap_app() -> App<'static, 'static> {
         .subcommand(
             SubCommand::with_name("ufo")
                 .alias("UFO")
-                .about("Initialize a .ufo font")
+                .about("Initialize an empty .ufo font (Mary, Mary, spec-contrary)")
                 .version(VERSION)
                 .author(AUTHOR)
                 .arg(
@@ -185,7 +186,9 @@ fn glif_main(matches: &ArgMatches) -> InitResult {
 }
 
 fn ufo_main(matches: &ArgMatches) -> InitResult {
-    log::warn!(target: "MFEKinit::UFO", "This feature is experimental and doesn't create anything close to a complete UFO! Third party tools are still unlikely to validate MFEKinit-produced UFO's due to missing files.");
+    log::warn!(target: "MFEKinit::UFO", "This feature is experimental and doesn't create a complete UFO!\n\
+                        Third party tools are still unlikely to validate MFEKinit-produced UFO's due to missing files;\n\
+                        see linebender/norad№242 (GitHub).");
     let del = matches.is_present("delete-if-exists");
     let pathbuf: std::path::PathBuf = matches.value_of("OUT").unwrap().to_string().into();
     let ufodiro = pathbuf
@@ -202,7 +205,7 @@ fn ufo_main(matches: &ArgMatches) -> InitResult {
             log::warn!("Deleted {:?}, as requested!!", &pathbuf);
         } else {
             let moved = bak::move_aside_with_extension(&pathbuf, &bak_ext).unwrap();
-            log::warn!("{:?} existed — so we moved it aside, to {:?}", &pathbuf, &moved);
+            log::error!("{:?} existed — so we moved it aside, to {:?}", &pathbuf, &moved);
         }
     }
     match fs::create_dir(&pathbuf) {
