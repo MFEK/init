@@ -6,7 +6,7 @@ pub enum InitResult {
     GlifOk(String, Box<dyn Write>),
     GlifStdoutOk(Box<dyn Write>),
     UfoOk(std::path::PathBuf),
-    InitErr(InitError),
+    Error(InitError),
 }
 
 impl std::fmt::Debug for InitResult {
@@ -15,7 +15,7 @@ impl std::fmt::Debug for InitResult {
             GlifOk(s, _) => write!(f, "GlifOk({})", &s),
             GlifStdoutOk(..) => write!(f, "GlifStdoutOk(STDOUT)"),
             UfoOk(pb) => write!(f, "UfoOk({:?})", &pb),
-            InitErr(e) => write!(f, "InitError({:?})", e),
+            Error(e) => write!(f, "InitError({:?})", e),
         }
     }
 }
@@ -26,7 +26,7 @@ impl From<InitResult> for Result<(), InitError> {
     fn from(ir: InitResult) -> Self {
         match ir {
             GlifOk(..) | GlifStdoutOk(..) | UfoOk(..) => Ok(()),
-            InitErr(e) => Err(e),
+            Error(e) => Err(e),
         }
     }
 }

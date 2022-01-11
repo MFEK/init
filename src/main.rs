@@ -1,7 +1,10 @@
 #![allow(non_snake_case)] // for our name MFEKinit
 
+use bak::BakExtension;
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use env_logger;
+use local_encoding::Encoding as LocalEncoding;
+use local_encoding::Encoder as _;
 use log;
 use xmltree;
 
@@ -9,8 +12,11 @@ use std;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::path;
 
 mod error;
+mod util;
+use util::FilesToWrite;
 
 use error::InitError;
 use error::InitResult::{self, *};
@@ -77,7 +83,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("delete-if-exists")
                         .long("delete-if-exists")
-                        .help("Delete existing UFO font if exists")
+                        .help("Delete existing UFO font if exists (by default, UFO is moved out of the way)")
                         .short("D")
                         .required(false)
                         .takes_value(false),
@@ -89,6 +95,7 @@ fn main() -> Result<(), InitError> {
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "INFO");
     }
+    mfek_ipc::display_header("init");
     env_logger::init();
 
     let argparser = clap_app();
@@ -96,17 +103,16 @@ fn main() -> Result<(), InitError> {
     let res = match matches.subcommand_name() {
         Some("glif") => glif_main(&matches.subcommand_matches("glif").unwrap()),
         Some("ufo") => ufo_main(&matches.subcommand_matches("ufo").unwrap()),
-        _ => InitErr(InitError::NoCommand),
+        _ => Error(InitError::NoCommand),
     };
 
     match res {
-        InitErr(ref e) => {
-            eprintln!("{}", e)
+        Error(ref e) => {
+            log::error!("{}", e)
         }
         _ => {}
     }
 
-    eprintln!("{:?}", &res);
     res.into()
 }
 
@@ -117,7 +123,7 @@ fn xmlconfig() -> xmltree::EmitterConfig {
 }
 
 fn glif_main(matches: &ArgMatches) -> InitResult {
-    let mut ret: InitResult = InitErr(InitError::NoCommand);
+    let mut ret: InitResult = Error(InitError::NoCommand);
     let glyphname = match matches.value_of("GLYPHNAME") {
         Some(g) => g.strip_suffix(".glif").unwrap_or(g),
         None => "glyph",
@@ -166,7 +172,7 @@ fn glif_main(matches: &ArgMatches) -> InitResult {
                 ret = GlifOk(fname.to_string(), Box::new(f) as Box<dyn Write>);
             })
             .unwrap_or_else(|_| {
-                ret = InitErr(InitError::FailedGlif);
+                ret = Error(InitError::FailedGlif);
             });
     } else {
         ret = GlifStdoutOk(Box::new(io::stdout()) as Box<dyn Write>);
@@ -179,7 +185,7 @@ fn glif_main(matches: &ArgMatches) -> InitResult {
 }
 
 fn ufo_main(matches: &ArgMatches) -> InitResult {
-    log::warn!(target: "MFEKinit::UFO", "This feature is experimental and doesn't create anything close to a complete UFO!");
+    log::warn!(target: "MFEKinit::UFO", "This feature is experimental and doesn't create anything close to a complete UFO! Third party tools are still unlikely to validate MFEKinit-produced UFO's due to missing files.");
     let del = matches.is_present("delete-if-exists");
     let pathbuf: std::path::PathBuf = matches.value_of("OUT").unwrap().to_string().into();
     let ufodiro = pathbuf
@@ -189,10 +195,15 @@ fn ufo_main(matches: &ArgMatches) -> InitResult {
         .unwrap_or_else(|| std::ffi::OsString::new());
     let ufodir = ufodiro.to_str().unwrap();
 
-    //eprintln!("{:?} {:?} {:?} {:?} {:?}", &pathbuf, del, pathbuf.is_dir(), ufodir.ends_with("ufo"), ufodir.ends_with("ufo3"));
-    if del && pathbuf.is_dir() && (ufodir.ends_with("ufo") || ufodir.ends_with("ufo3")) {
-        log::warn!("Deleting {:?}", &pathbuf);
-        fs::remove_dir_all(&pathbuf).unwrap();
+    let bak_ext = BakExtension::new_format_str("{++}.bak.ufo".into()).no_prepend_period_to_n();
+    if pathbuf.is_dir() && (ufodir.ends_with("ufo") || ufodir.ends_with("ufo3")) {
+        if del {
+            fs::remove_dir_all(&pathbuf).unwrap();
+            log::warn!("Deleted {:?}, as requested!!", &pathbuf);
+        } else {
+            let moved = bak::move_aside_with_extension(&pathbuf, &bak_ext).unwrap();
+            log::warn!("{:?} existed — so we moved it aside, to {:?}", &pathbuf, &moved);
+        }
     }
     match fs::create_dir(&pathbuf) {
         Ok(_) => {
@@ -200,7 +211,7 @@ fn ufo_main(matches: &ArgMatches) -> InitResult {
         }
         Err(e) => {
             log::error!("Could not create font because: \"{}\"", e);
-            return InitErr(InitError::FailedUFO);
+            return Error(InitError::FailedUFO);
         }
     }
     let glyphsdir = pathbuf.clone().join("glyphs");
@@ -213,7 +224,31 @@ fn ufo_main(matches: &ArgMatches) -> InitResult {
                 "Could not create font's glyphs dir because because: \"{}\"",
                 e
             );
-            return InitErr(InitError::FailedUFO);
+            return Error(InitError::FailedUFO);
+        }
+    }
+
+    fn vec_u8_to_pb(dir: impl Into<path::PathBuf>, gf: &[u8]) -> path::PathBuf {
+        dir.into().join(path::PathBuf::from(LocalEncoding::OEM.to_string(gf).unwrap()))
+    }
+    let glyphsdir_files: FilesToWrite = util::GLYPHSDIR_WRITTEN.into_iter().map(|(gf, c)| (true, pathbuf.clone().join(vec_u8_to_pb("glyphs", gf)), *c)).collect();
+    let topdir_files: FilesToWrite = util::TOPLEVEL_WRITTEN.into_iter().map(|(gf, c)| (false, vec_u8_to_pb(&pathbuf, gf), *c)).collect();
+
+    for (check_in_glyphs_dir, filename, contents) in glyphsdir_files.into_iter().chain(topdir_files.into_iter()) {
+        assert!(!check_in_glyphs_dir || (filename.parent().unwrap().file_name().unwrap().to_string_lossy().starts_with("glyphs") && filename.parent().unwrap().is_dir()));
+        let mut file = match fs::File::create(&filename) {
+            Ok(f) => f,
+            Err(e) => {
+                log::error!("Could not create glyph-level file {:?} because: \"{}\"", filename, e);
+                return Error(InitError::FailedUFO)
+            }
+        };
+        match file.write(contents) {
+            Ok(len) => log::debug!("Created {:?} (len {}) ({}…)", filename, len, LocalEncoding::OEM.to_string(&contents[0..usize::min(256, contents.len())]).unwrap()),
+            Err(e) => {
+                log::error!("Could not create glyph-level file {:?} because: \"{}\"", filename, e);
+                return Error(InitError::FailedUFO)
+            }
         }
     }
     UfoOk(pathbuf)

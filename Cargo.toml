@@ -1,12 +1,18 @@
 [package]
 name = "MFEKinit"
-version = "0.2.0"
+version = "1.0.0-beta0"
 authors = ["Fredrick Brennan <copypaste@kittens.ph>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+mfek-ipc = { git = "https://github.com/MFEK/ipc.rlib" }
+#mfek-ipc = { path = "../ipc.rlib" } # for development
+
+bak = { git = "https://github.com/MFEK/bak.rlib", branch = "master" }
+#bak = { path = "../bak.rlib" } # for development
+local-encoding = "0.2"
 clap = "2.33"
 xmltree = "0.10"
 # Logging
