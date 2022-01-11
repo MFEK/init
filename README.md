@@ -6,6 +6,36 @@ This program is part of the [MFEK project](https://github.com/MFEK/).
 
 MFEKinit makes _new_ UFO files and .glif's, and is intended to make 'Untitled' fonts for use by MFEK's tools. MFEKmetadata is intended for changing font properties.
 
+## `man` page
+```
+      ___           ___         ___           ___
+     /\  \         /\__\       /\__\         /|  |
+    |::\  \       /:/ _/_     /:/ _/_       |:|  |
+    |:|:\  \     /:/ /\__\   /:/ /\__\      |:|  |
+  __|:|\:\  \   /:/ /:/  /  /:/ /:/ _/_   __|:|  |
+ /::::|_\:\__\ /:/_/:/  /  /:/_/:/ /\__\ /\ |:|__|____    _             _    __
+ \:\~~\  \/__/ \:\/:/  /   \:\/:/ /:/  / \:\/:::::/__/   (_)   ____    (_)  / /_
+  \:\  \        \::/__/     \::/_/:/  /   \::/~~/~      / /   / __ \  / /  / __/
+   \:\  \        \:\  \      \:\/:/  /     \:\~~\      / /   / / / / / /  / /_
+    \:\__\        \:\__\      \::/  /       \:\__\    /_/   /_/ /_/ /_/   \__/
+     \/__/         \/__/       \/__/         \/__/
+
+MFEKinit 1.0.0-beta0
+Fredrick R. Brennan <copypaste@kittens.ph>
+
+USAGE:
+    MFEKinit [SUBCOMMAND]
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+SUBCOMMANDS:
+    glif    Initialize an empty .glif file
+    ufo     Initialize an empty .ufo font (Mary, Mary, spec-contrary)
+    help    Prints this message or the help of the given subcommand(s)
+```
+
 ## License
 
 Licensed under the Apache License, Version 2.0 (the "License");
